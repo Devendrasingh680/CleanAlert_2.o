@@ -1,0 +1,28 @@
+import org.gradle.api.initialization.resolve.RepositoriesMode
+
+pluginManagement {
+    try {
+        def pe = Class.forName("java.lang.ProcessEnvironment")
+        def field = pe.getDeclaredField("theCaseInsensitiveEnvironment")
+        field.setAccessible(true)
+        def map = (Map<String, String>) field.get(null)
+        map.remove("ANDROID_PREFS_ROOT")
+    } catch (Throwable ignored) {}
+
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "CleanAlert"
+include(":app")

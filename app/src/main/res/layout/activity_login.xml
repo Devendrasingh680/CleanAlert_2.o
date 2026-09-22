@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FAF9F4"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="40dp"
+        android:paddingEnd="40dp"
+        android:paddingTop="28dp"
+        android:paddingBottom="24dp"
+        android:gravity="center_horizontal">
+
+        <!-- CleanAlert Logo -->
+        <ImageView
+            android:id="@+id/ivLogo"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginTop="20dp"
+            android:contentDescription="CleanAlert Logo"
+            android:src="@drawable/cleanalert_logo"
+            android:scaleType="centerInside" />
+
+        <!-- App Name -->
+        <TextView
+            android:id="@+id/tvAppName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="CleanAlert"
+            android:textColor="#111111"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:fontFamily="sans" />
+
+        <!-- Tagline -->
+        <TextView
+            android:id="@+id/tvTagline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="The smart way to dump your Garbage"
+            android:textColor="#777777"
+            android:textSize="16sp"
+            android:gravity="center" />
+
+        <!-- Email Label -->
+        <TextView
+            android:id="@+id/tvEmailLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="38dp"
+            android:text="Email Address"
+            android:textColor="#666666"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <!-- Email Input -->
+        <LinearLayout
+            android:id="@+id/emailContainer"
+            android:layout_width="match_parent"
+            android:layout_height="62dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_input"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:contentDescription="Email"
+                android:src="@drawable/ic_email"
+                android:tint="#777777" />
+
+            <EditText
+                android:id="@+id/etEmail"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:hint="hello@example.com"
+                android:inputType="textEmailAddress"
+                android:paddingStart="14dp"
+                android:paddingEnd="4dp"
+                android:singleLine="true"
+                android:textColor="#333333"
+                android:textColorHint="#999999"
+                android:textSize="16sp" />
+
+        </LinearLayout>
+
+        <!-- Password Label -->
+        <TextView
+            android:id="@+id/tvPasswordLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Password"
+            android:textColor="#666666"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <!-- Password Input -->
+        <LinearLayout
+            android:id="@+id/passwordContainer"
+            android:layout_width="match_parent"
+            android:layout_height="62dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_input"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="18dp"
+            android:paddingEnd="14dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:contentDescription="Password"
+                android:src="@drawable/ic_lock"
+                android:tint="#777777" />
+
+            <EditText
+                android:id="@+id/etPassword"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:hint="Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"
+                android:inputType="textPassword"
+                android:paddingStart="14dp"
+                android:paddingEnd="8dp"
+                android:singleLine="true"
+                android:textColor="#333333"
+                android:textColorHint="#999999"
+                android:textSize="16sp" />
+
+            <!-- Show Password -->
+            <ImageView
+                android:id="@+id/ivShowPassword"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:clickable="true"
+                android:contentDescription="Show password"
+                android:focusable="true"
+                android:padding="2dp"
+                android:src="@drawable/ic_visibility"
+                android:tint="#777777" />
+
+        </LinearLayout>
+
+        <!-- Forgot Password -->
+        <TextView
+            android:id="@+id/tvForgotPassword"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="12dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:text="Forgot Password?"
+            android:textColor="#D96B4D"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <!-- Sign In Button -->
+        <Button
+            android:id="@+id/btnSignIn"
+            android:layout_width="match_parent"
+            android:layout_height="62dp"
+            android:layout_marginTop="26dp"
+            android:background="@drawable/bg_button_green"
+            android:text="Sign In"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <!-- OR Divider -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_marginTop="18dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="#DDDDDD" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_marginEnd="14dp"
+                android:text="OR"
+                android:textColor="#777777"
+                android:textSize="14sp" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="#DDDDDD" />
+
+        </LinearLayout>
+
+        <!-- Social Login Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:orientation="horizontal">
+
+            <!-- Google -->
+            <LinearLayout
+                android:id="@+id/btnGoogle"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/bg_button_outline"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="23dp"
+                    android:layout_height="23dp"
+                    android:contentDescription="Google"
+                    android:src="@drawable/ic_google" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:text="Google"
+                    android:textColor="#333333"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
+
+            <!-- Space -->
+            <Space
+                android:layout_width="14dp"
+                android:layout_height="match_parent" />
+
+            <!-- Apple -->
+            <LinearLayout
+                android:id="@+id/btnApple"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/bg_button_outline"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="23dp"
+                    android:layout_height="23dp"
+                    android:contentDescription="Apple"
+                    android:src="@drawable/ic_apple" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:text="Apple"
+                    android:textColor="#333333"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Create Account -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="42dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvNewUser"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="New to CleanAlert? "
+                android:textColor="#777777"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tvCreateAccount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:text="Create an account"
+                android:textColor="#D96B4D"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

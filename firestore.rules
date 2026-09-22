@@ -1,0 +1,114 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && (request.auth.token.email == 'admin@mc.com'
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    function isCollector() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'collector';
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == userId
+        && request.resource.data.email == request.auth.token.email
+        && (request.resource.data.role == 'resident'
+          || request.resource.data.role == 'collector'
+          || (request.resource.data.role == 'admin' && request.auth.token.email == 'admin@mc.com'));
+
+      allow read: if isOwner(userId) || isAdmin();
+
+      allow update: if isAdmin()
+        || (isOwner(userId)
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.role == resource.data.role);
+
+      allow delete: if isAdmin();
+    }
+
+    match /submissions/{submissionId} {
+      allow create: if signedIn()
+        && request.resource.data.residentId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.points == 20;
+
+      allow read: if signedIn()
+        && (resource.data.residentId == request.auth.uid
+          || resource.data.collectorId == request.auth.uid
+          || (isCollector() && resource.data.status == 'pending')
+          || isAdmin());
+
+      // Admins may review a submission. A collector may claim a pending item or
+      // update the status of an item already assigned to that collector.
+      allow update: if isAdmin()
+        || (signedIn()
+          && request.resource.data.residentId == resource.data.residentId
+          && request.resource.data.photoUrl == resource.data.photoUrl
+          && request.resource.data.points == resource.data.points
+          && ((resource.data.status == 'pending'
+              && request.resource.data.status == 'assigned'
+              && request.resource.data.collectorId == request.auth.uid)
+            || (resource.data.status == 'assigned'
+              && resource.data.collectorId == request.auth.uid
+              && request.resource.data.collectorId == resource.data.collectorId
+              && (request.resource.data.status == 'assigned'
+                || request.resource.data.status == 'collected'
+                || request.resource.data.status == 'completed'))));
+
+      allow delete: if isAdmin();
+    }
+
+    match /pickups/{pickupId} {
+      allow read: if signedIn()
+        && (isAdmin()
+          || resource.data.residentId == request.auth.uid
+          || resource.data.collectorId == request.auth.uid);
+      allow create: if signedIn()
+        && (isAdmin() || request.resource.data.residentId == request.auth.uid);
+      allow update: if isAdmin()
+        || (signedIn()
+          && (resource.data.residentId == request.auth.uid
+            || resource.data.collectorId == request.auth.uid));
+      allow delete: if isAdmin();
+    }
+
+    match /rewards/{rewardId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow write: if isAdmin();
+    }
+
+    // Minimal public projection of a resident's points/streak so the
+    // leaderboard can be read without exposing full user profiles.
+    match /leaderboard/{residentId} {
+      allow read: if signedIn();
+      allow write: if isAdmin() || isOwner(residentId);
+    }
+
+    match /redemptions/{redemptionId} {
+      allow create: if signedIn()
+        && request.resource.data.residentId == request.auth.uid;
+      allow read: if signedIn()
+        && (resource.data.residentId == request.auth.uid || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+  }
+}

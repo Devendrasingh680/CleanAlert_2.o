@@ -1,0 +1,547 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F9F9FB"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="30dp"
+        android:paddingTop="20dp"
+        android:paddingEnd="30dp"
+        android:paddingBottom="24dp">
+
+        <!-- Top Bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="45dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/btnBack"
+                android:layout_width="70dp"
+                android:layout_height="match_parent"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:contentDescription="Back"
+                    android:src="@drawable/ic_arrow_back"
+                    android:tint="#222222" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="Back"
+                    android:textColor="#222222"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="CleanAlert"
+                android:textColor="#111111"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/ivNotification"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:contentDescription="Notifications"
+                android:src="@drawable/ic_notification"
+                android:tint="#222222" />
+
+        </LinearLayout>
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="17dp"
+            android:text="Leaderboard"
+            android:textColor="#111111"
+            android:textSize="29sp"
+            android:textStyle="bold" />
+
+        <!-- Subtitle -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Top performers in waste segregation"
+            android:textColor="#888888"
+            android:textSize="15sp" />
+
+        <!-- Locality / City Toggle -->
+        <LinearLayout
+            android:id="@+id/leaderboardToggle"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="22dp"
+            android:background="@drawable/bg_role_selector"
+            android:orientation="horizontal"
+            android:padding="3dp">
+
+            <TextView
+                android:id="@+id/btnLocality"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/bg_toggle_selected"
+                android:gravity="center"
+                android:text="Locality"
+                android:textColor="#222222"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/btnCity"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="City"
+                android:textColor="#777777"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/liveLeaderboardList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:orientation="vertical" />
+
+        <!-- Top 3 (design sample, hidden once real data loads) -->
+        <LinearLayout
+            android:id="@+id/staticLeaderboardSample"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="180dp"
+            android:layout_marginTop="18dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <!-- Priya #2 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:background="@drawable/bg_avatar_gray"
+                    android:gravity="center"
+                    android:text="PS"
+                    android:textColor="#555555"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Priya"
+                    android:textColor="#222222"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:background="@drawable/bg_rank_silver"
+                    android:paddingStart="8dp"
+                    android:paddingTop="3dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="3dp"
+                    android:text="#2"
+                    android:textColor="#FFFFFF"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="900 pts"
+                    android:textColor="#777777"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+            <!-- Rohan #1 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="58dp"
+                    android:layout_height="58dp"
+                    android:background="@drawable/bg_avatar_gold"
+                    android:gravity="center"
+                    android:text="RK"
+                    android:textColor="#555555"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="7dp"
+                    android:text="Rohan"
+                    android:textColor="#222222"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:background="@drawable/bg_rank_gold"
+                    android:paddingStart="9dp"
+                    android:paddingTop="3dp"
+                    android:paddingEnd="9dp"
+                    android:paddingBottom="3dp"
+                    android:text="#1"
+                    android:textColor="#FFFFFF"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="1000 pts"
+                    android:textColor="#20B968"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
+
+            <!-- Adnan #3 -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:background="@drawable/bg_avatar_gray"
+                    android:gravity="center"
+                    android:text="AS"
+                    android:textColor="#555555"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Adnan"
+                    android:textColor="#222222"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:background="@drawable/bg_rank_bronze"
+                    android:paddingStart="8dp"
+                    android:paddingTop="3dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="3dp"
+                    android:text="#3"
+                    android:textColor="#FFFFFF"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="5dp"
+                    android:text="800 pts"
+                    android:textColor="#777777"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Rank 1 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/bg_leader_current"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp">
+
+            <TextView
+                android:layout_width="28dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="1"
+                android:textColor="#222222"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="40dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="7dp"
+                android:background="@drawable/bg_avatar_green"
+                android:gravity="center"
+                android:text="R"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="Rohan Kumar (You)"
+                android:textColor="#222222"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1000 pts"
+                android:textColor="#222222"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- Rank 2 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="7dp"
+            android:background="@drawable/bg_white_card"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp">
+
+            <TextView
+                android:layout_width="28dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="2"
+                android:textColor="#222222"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="40dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="7dp"
+                android:background="@drawable/bg_avatar_gray"
+                android:gravity="center"
+                android:text="P"
+                android:textColor="#555555"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="Priya Sharma"
+                android:textColor="#222222"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="900 pts"
+                android:textColor="#222222"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- Rank 3 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="7dp"
+            android:background="@drawable/bg_white_card"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp">
+
+            <TextView
+                android:layout_width="28dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="3"
+                android:textColor="#222222"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="40dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="7dp"
+                android:background="@drawable/bg_avatar_gray"
+                android:gravity="center"
+                android:text="A"
+                android:textColor="#555555"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="Adnan Syed"
+                android:textColor="#222222"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="800 pts"
+                android:textColor="#222222"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- Rank 4 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="7dp"
+            android:background="@drawable/bg_white_card"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp">
+
+            <TextView
+                android:layout_width="28dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="4"
+                android:textColor="#222222"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="40dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="7dp"
+                android:background="@drawable/bg_avatar_gray"
+                android:gravity="center"
+                android:text="H"
+                android:textColor="#555555"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:text="Hafsa Khan"
+                android:textColor="#222222"
+                android:textSize="14sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="750 pts"
+                android:textColor="#222222"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- Current Rank -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="55dp"
+            android:layout_marginTop="24dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Rank"
+                android:textColor="#777777"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="40dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="10dp"
+                android:background="@drawable/bg_rank_gold"
+                android:gravity="center"
+                android:text="#1"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:text="Rohan Kumar"
+                android:textColor="#555555"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1000 pts"
+                android:textColor="#20B968"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>

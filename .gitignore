@@ -1,0 +1,25 @@
+# Local Android configuration and secrets
+local.properties
+google-services.json
+# Build output
+build/
+**/build/
+.gradle/
+.gradle-user/
+# Local build/emulator diagnostics and temporary scripts
+*.log
+assemble-build.*
+detached-build.*
+now-build.*
+run-detached-build.ps1
+# Local SDK mirror used only to work around Windows SDK ACL issues
+android-sdk/
+
+# Local Android emulator and tooling state
+.android/
+.ai/
+*.log
+
+# IDE metadata
+.idea/
+.vscode/

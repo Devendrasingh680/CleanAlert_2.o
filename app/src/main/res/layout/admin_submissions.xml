@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#F9F9FB">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="22dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
+            <TextView android:id="@+id/btnAdminBack" android:layout_width="0dp" android:layout_height="44dp" android:layout_weight="1" android:gravity="center_vertical" android:text="‹  Admin Dashboard" android:textColor="#111827" android:textSize="15sp" />
+            <TextView android:id="@+id/btnAdminQueueLogout" android:layout_width="78dp" android:layout_height="38dp" android:background="@drawable/bg_logout_button" android:gravity="center" android:text="Logout" android:textColor="#DC2626" android:textSize="12sp" android:textStyle="bold" />
+        </LinearLayout>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:text="Review Submissions" android:textColor="#111827" android:textSize="25sp" android:textStyle="bold" />
+        <TextView android:id="@+id/tvAdminQueueStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="Loading submissions..." android:textColor="#6B7280" android:textSize="13sp" />
+        <LinearLayout android:id="@+id/adminSubmissionList" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:orientation="vertical" />
+    </LinearLayout>
+</ScrollView>

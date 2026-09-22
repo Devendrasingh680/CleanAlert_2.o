@@ -1,0 +1,59 @@
+import java.util.Properties
+
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+}
+
+Properties localProperties = new Properties()
+File localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+}
+String mapsApiKey = localProperties.getProperty('MAPS_API_KEY', 'YOUR_GOOGLE_MAPS_API_KEY')
+
+android {
+    namespace 'com.futureseed.cleanalert'
+    compileSdk 36
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    defaultConfig {
+        applicationId 'com.futureseed.cleanalert'
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName '1.0'
+        manifestPlaceholders = [MAPS_API_KEY: mapsApiKey]
+        buildConfigField 'String', 'MAPS_API_KEY', '"' + mapsApiKey.replace('"', '\\"') + '"'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.annotation:annotation:1.9.1'
+
+    implementation platform('com.google.firebase:firebase-bom:34.19.0')
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.firebase:firebase-firestore'
+    implementation 'com.google.firebase:firebase-storage'
+    implementation 'com.google.firebase:firebase-messaging'
+
+    implementation 'com.google.android.gms:play-services-maps:20.0.0'
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
+    implementation 'com.google.android.gms:play-services-auth:21.2.0'
+}
+
+// The root google-services.json is currently locked by Windows. Use the accessible
+// debug-variant copy for the debug build without changing the Firebase client id.
+gradle.projectsEvaluated {
+    tasks.named('processDebugGoogleServices').configure {
+        googleServicesJsonFiles.set([file('src/debug/google-services.json')])
+    }
+}

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#F9F9FB">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="22dp">
+        <TextView android:id="@+id/btnCollectorBack" android:layout_width="wrap_content" android:layout_height="44dp" android:gravity="center_vertical" android:text="‹  Dashboard" android:textColor="#111827" android:textSize="15sp" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:text="Collection Requests" android:textColor="#111827" android:textSize="25sp" android:textStyle="bold" />
+        <TextView android:id="@+id/tvCollectorQueueStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:text="Loading pending requests..." android:textColor="#6B7280" android:textSize="13sp" />
+        <LinearLayout android:id="@+id/collectorRequestList" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:orientation="vertical" />
+    </LinearLayout>
+</ScrollView>

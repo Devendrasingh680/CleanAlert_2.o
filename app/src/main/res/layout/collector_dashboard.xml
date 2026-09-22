@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F9F9FB"
+    android:orientation="vertical">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:background="#FFFFFF"
+        android:gravity="center_vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CleanAlert"
+                android:textColor="#111111"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Collector Dashboard"
+                android:textColor="#888888"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="@drawable/bg_collector_avatar"
+            android:gravity="center"
+            android:text="RK"
+            android:textColor="#20B968"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <!-- Scrollable Content -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <!-- Status -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="70dp"
+                android:background="@drawable/bg_white_card"
+                android:gravity="center_vertical"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp">
+
+                <TextView
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:background="@drawable/bg_online_dot"
+                    android:text="" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Collector Status"
+                        android:textColor="#888888"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:id="@+id/tvStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:text="Online"
+                        android:textColor="#20B968"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/btnToggleStatus"
+                    android:layout_width="85dp"
+                    android:layout_height="36dp"
+                    android:background="@drawable/bg_outline_button"
+                    android:gravity="center"
+                    android:text="Go Offline"
+                    android:textColor="#20B968"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
+
+            <!-- Today's Collection -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="26dp"
+                android:text="Today's Collection"
+                android:textColor="#222222"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="110dp"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginEnd="6dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_white_card"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvTotalCollections"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="18"
+                        android:textColor="#111111"
+                        android:textSize="25sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="5dp"
+                        android:text="Total"
+                        android:textColor="#888888"
+                        android:textSize="12sp" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_white_card"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvCompleted"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="14"
+                        android:textColor="#20B968"
+                        android:textSize="25sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="5dp"
+                        android:text="Completed"
+                        android:textColor="#888888"
+                        android:textSize="12sp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Pending Requests -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="26dp"
+                android:text="Pending Collections"
+                android:textColor="#222222"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <!-- Request 1 -->
+            <LinearLayout
+                android:id="@+id/requestOne"
+                android:layout_width="match_parent"
+                android:layout_height="105dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_white_card"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="14dp">
+
+                <TextView
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
+                    android:background="@drawable/bg_profile_icon"
+                    android:gravity="center"
+                    android:text="W"
+                    android:textColor="#20B968"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Rohan Kumar"
+                        android:textColor="#222222"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="MG Road, Sector 4"
+                        android:textColor="#888888"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Organic + Dry Waste"
+                        android:textColor="#777777"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/btnStartCollection"
+                    android:layout_width="92dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_redeem_button"
+                    android:gravity="center"
+                    android:text="Start"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
+
+            <!-- Request 2 -->
+            <LinearLayout
+                android:id="@+id/requestTwo"
+                android:layout_width="match_parent"
+                android:layout_height="105dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_white_card"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="14dp">
+
+                <TextView
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
+                    android:background="@drawable/bg_profile_icon"
+                    android:gravity="center"
+                    android:text="A"
+                    android:textColor="#20B968"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Adnan Syed"
+                        android:textColor="#222222"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="MG Road, Sector 5"
+                        android:textColor="#888888"
+                        android:textSize="11sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Dry Recyclable"
+                        android:textColor="#777777"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/btnStartCollectionTwo"
+                    android:layout_width="92dp"
+                    android:layout_height="38dp"
+                    android:background="@drawable/bg_redeem_button"
+                    android:gravity="center"
+                    android:text="Start"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </ScrollView>
+
+    <!-- Bottom Navigation -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:background="#FFFFFF"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/navDashboard"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Dashboard"
+            android:textColor="#20B968"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/navMap"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Map"
+            android:textColor="#888888"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/navHistory"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="History"
+            android:textColor="#888888"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/navProfile"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Profile"
+            android:textColor="#888888"
+            android:textSize="11sp" />
+
+    </LinearLayout>
+
+</LinearLayout>
