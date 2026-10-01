@@ -112,7 +112,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="â‚¹100 Gift Card"
+                android:text="₹100 Gift Card"
                 android:textColor="#20B968"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -147,7 +147,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:lineSpacingExtra="3dp"
-            android:text="Get an instant â‚¹100 Amazon Pay Gift Card. Use it to shop, pay bills, or purchase digital content across millions of products on Amazon.in. Valid for 1 year from the date of claim."
+            android:text="Get an instant ₹100 Amazon Pay Gift Card. Use it to shop, pay bills, or purchase digital content across millions of products on Amazon.in. Valid for 1 year from the date of claim."
             android:textColor="#555555"
             android:textSize="14sp" />
 

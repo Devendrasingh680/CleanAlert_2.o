@@ -119,7 +119,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="5dp"
-            android:text="Ã¢â€šÂ¹100 Gift Card"
+            android:text="₹100 Gift Card"
             android:textColor="#20B968"
             android:textSize="15sp"
             android:textStyle="bold" />

@@ -11,6 +11,12 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.EmailAuthProvider;
+import com.google.firebase.auth.UserInfo;
+import com.google.firebase.firestore.AggregateField;
+import com.google.firebase.firestore.AggregateSource;
+import com.google.firebase.messaging.FirebaseMessaging;
+import android.os.Build;
 import com.google.firebase.auth.GoogleAuthProvider;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -29,10 +35,21 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.FirebaseApp;
@@ -67,9 +84,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     private static final int GOOGLE_SIGN_IN_REQUEST = 702;
     private GoogleSignInClient googleSignInClient;
     private static final String ADMIN_EMAIL = "admin@mc.com";
-    private static final int REWARD_CAFE_COST = 200;
-    private static final int REWARD_AMAZON_COST = 350;
-    private static final String DEFAULT_LOCALITY = "Bengaluru";
+    private static final int NOTIFICATION_PERMISSION_REQUEST = 44;
     private static final SimpleDateFormat DAY_FORMAT =
             new SimpleDateFormat("yyyy-MM-dd", Locale.US);
 
@@ -82,6 +97,17 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     private String firebaseInitError;
     private Uri selectedPhotoUri;
     private Bitmap capturedPhotoBitmap;
+    private String selectedWasteType = "Dry Recyclable";
+    private Double capturedLat;
+    private Double capturedLng;
+    private String capturedAddress;
+    private FusedLocationProviderClient fusedLocationClient;
+    private String meName, meEmail, meRole, meLocality;
+    private LatLng selectedTarget;
+    private LocationCallback broadcastCallback;
+    private boolean broadcastingLocation = false;
+    private ListenerRegistration liveCollectorsListener;
+    private final Map<String, com.google.android.gms.maps.model.Marker> liveCollectorMarkers = new HashMap<>();
     private boolean waitingForCameraPermission;
     private MapView mapView;
     private GoogleMap googleMap;
@@ -100,6 +126,8 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         } catch (Exception error) {
             firebaseInitError = "Firebase could not initialize";
         }
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
         try {
             GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -121,6 +149,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     }
 
     private void show(int layout) {
+        if (currentLayout == R.layout.collector_map) teardownMap();
         currentLayout = layout;
         setContentView(layout);
         wireCurrentScreen();
@@ -133,6 +162,14 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         if (layout == R.layout.resident_my_rewards) loadMyRewards();
         if (layout == R.layout.collector_dashboard) loadCollectorDashboard();
         if (layout == R.layout.admin_dashboard) loadAdminDashboard();
+        if (layout == R.layout.resident_submit_waste) captureLocationForSubmission();
+        if (layout == R.layout.resident_past_submissions) loadPastSubmissions("all");
+        if (layout == R.layout.collector_profile) loadCollectorProfile();
+        if (layout == R.layout.collection_history) loadCollectionHistory(null);
+        if (layout == R.layout.resident_rewards) loadRewardsCatalog();
+        if (layout == R.layout.resident_profile) loadResidentProfile();
+        if (layout == R.layout.resident_collection_alert) loadCollectionAlert();
+        applyIdentity();
         if (layout == R.layout.activity_login) {
             View apple = findViewById(R.id.btnApple);
             if (apple != null) apple.setVisibility(View.GONE);
@@ -145,26 +182,43 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         link(R.id.tvLogin, () -> show(R.layout.activity_login));
         link(R.id.tvAlreadyAccount, () -> show(R.layout.activity_login));
         link(R.id.btnSignIn, this::signIn);
+        link(R.id.btnEditProfile, () -> showEditProfile(R.layout.resident_profile));
+        link(R.id.btnNotifications, () -> showNotificationSettings(R.layout.resident_profile));
+        link(R.id.btnSettings, () -> showSettings(R.layout.resident_profile));
+        link(R.id.btnRemarkFeedback, () -> showFeedback(R.layout.collector_profile));
+        link(R.id.btnChangePassword, () -> showChangePassword(R.layout.collector_profile));
+        link(R.id.btnShiftSettings, () -> showSettings(R.layout.collector_profile));
+        link(R.id.btnAdminUsers, this::showAdminUsers);
+        link(R.id.btnAdminAssignRoutes, this::showAdminAssignRoutes);
+        link(R.id.btnAdminRewards, this::showAdminRewards);
+        link(R.id.btnAdminReports, this::showAdminReports);
         link(R.id.btnGoogle, this::startGoogleSignIn);
         link(R.id.btnCreateAccount, this::createAccount);
         link(R.id.btnSubmitWaste, () -> show(R.layout.resident_submit_waste));
         link(R.id.btnPickPhoto, this::pickPhoto);
         link(R.id.btnTakePhoto, this::takePhoto);
         link(R.id.btnSubmitWasteFinal, this::submitWaste);
+        link(R.id.catDry, () -> setWasteCategory("Dry Recyclable"));
+        link(R.id.catOrganic, () -> setWasteCategory("Organic (Wet)"));
+        link(R.id.catEwaste, () -> setWasteCategory("E-Waste"));
+        link(R.id.catOther, () -> setWasteCategory("Other"));
+        link(R.id.filterAll, () -> loadPastSubmissions("all"));
+        link(R.id.filterOrganic, () -> loadPastSubmissions("organic"));
+        wireCollectionHistorySearch();
         link(R.id.btnHome, () -> show(R.layout.resident_home));
         link(R.id.tvCollector, () -> show(R.layout.activity_register_collector));
         link(R.id.tvResident, () -> show(R.layout.activity_register_resident));
         link(R.id.btnSendResetLink, this::sendPasswordReset);
         link(R.id.btnBackToLogin, () -> show(R.layout.activity_login));
         link(R.id.ivBack, () -> show(R.layout.activity_login));
-        link(R.id.btnBack, () -> show(R.layout.activity_login));
+        link(R.id.btnBack, this::goBack);
 
         link(R.id.navDashboard, () -> show(R.layout.collector_dashboard));
         link(R.id.navMap, () -> show(R.layout.collector_map));
         link(R.id.navHistory, () -> show(R.layout.collection_history));
         link(R.id.navProfile, () -> show(R.layout.collector_profile));
         link(R.id.btnToggleStatus, this::toggleCollectorStatus);
-        link(R.id.btnStartCollection, () -> show(R.layout.collector_requests));
+
 
         link(R.id.navHome, () -> show(R.layout.resident_home));
         link(R.id.navResHistory, () -> show(R.layout.resident_past_submissions));
@@ -172,11 +226,10 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         link(R.id.navResProfile, () -> show(R.layout.resident_profile));
         link(R.id.openPointsStreak, () -> show(R.layout.resident_points_streak));
         link(R.id.tvHomeStreak, () -> show(R.layout.resident_leaderboard));
-        link(R.id.btnStartCollectionTwo, () -> show(R.layout.collector_requests));
-        link(R.id.btnNavigate, () -> show(R.layout.collector_map));
+        link(R.id.btnNavigate, this::openNavigation);
         link(R.id.btnLogout, this::logout);
         link(R.id.adminLogout, this::logout);
-        link(R.id.btnAdminSubmissions, () -> show(R.layout.admin_submissions));
+        link(R.id.btnAdminSubmissions, () -> { adminListMode = "submissions"; show(R.layout.admin_submissions); });
         link(R.id.btnAdminBack, () -> show(R.layout.admin_dashboard));
         link(R.id.btnAdminQueueLogout, this::logout);
         link(R.id.btnCollectorBack, () -> show(R.layout.collector_dashboard));
@@ -187,12 +240,9 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         link(R.id.tabActive, () -> setRewardsTab("active"));
         link(R.id.tabRedeemed, () -> setRewardsTab("redeemed"));
         link(R.id.btnViewAll, () -> show(R.layout.resident_my_rewards));
-        link(R.id.btnRedeemCafe, () -> redeemReward("Cafe Coffee Day Voucher", REWARD_CAFE_COST));
-        link(R.id.btnRedeemAmazon, () -> redeemReward("Amazon Voucher", REWARD_AMAZON_COST));
         link(R.id.btnDone, () -> show(R.layout.resident_my_rewards));
         link(R.id.btnViewMyRewards, () -> show(R.layout.resident_my_rewards));
         link(R.id.btnBackToRewards, () -> show(R.layout.resident_rewards));
-        link(R.id.btnRedeem, () -> redeemReward("Amazon Voucher", REWARD_AMAZON_COST));
 
         link(R.id.btnZoomIn, () -> { if (googleMap != null) googleMap.animateCamera(CameraUpdateFactory.zoomIn()); });
         link(R.id.btnZoomOut, () -> { if (googleMap != null) googleMap.animateCamera(CameraUpdateFactory.zoomOut()); });
@@ -252,7 +302,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                     if ("resident".equals(role)) {
                         profile.put("points", 0L);
                         profile.put("streak", 0L);
-                        profile.put("locality", DEFAULT_LOCALITY);
                         profile.put("name", displayName);
                     } else if ("collector".equals(role)) {
                         profile.put("status", "offline");
@@ -265,7 +314,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                                     board.put("name", displayName);
                                     board.put("points", 0L);
                                     board.put("streak", 0L);
-                                    board.put("locality", DEFAULT_LOCALITY);
                                     db.collection("leaderboard").document(user.getUid()).set(board);
                                 }
                                 routeUser(user);
@@ -296,9 +344,15 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         db.collection("users").document(user.getUid()).get()
                 .addOnSuccessListener(snapshot -> {
                     String role = snapshot.getString("role");
-                    if ("admin".equals(role) || ADMIN_EMAIL.equalsIgnoreCase(user.getEmail())) {
+                    if (ADMIN_EMAIL.equalsIgnoreCase(user.getEmail())) role = "admin";
+                    meRole = role == null ? "resident" : role;
+                    meEmail = user.getEmail();
+                    meName = displayName(snapshot, user.getEmail());
+                    meLocality = snapshot.getString("locality");
+                    registerFcmToken(user);
+                    if ("admin".equals(meRole)) {
                         show(R.layout.admin_dashboard);
-                    } else if ("collector".equals(role)) {
+                    } else if ("collector".equals(meRole)) {
                         show(R.layout.collector_dashboard);
                     } else {
                         show(R.layout.resident_home);
@@ -307,8 +361,66 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                 .addOnFailureListener(error -> toast("Could not load your profile"));
     }
 
+    private String displayName(DocumentSnapshot snapshot, String email) {
+        String name = snapshot.getString("name");
+        if (name != null && !name.trim().isEmpty()) return name.trim();
+        if (email != null && email.contains("@")) return email.substring(0, email.indexOf('@'));
+        return email == null ? "User" : email;
+    }
+
+    private void applyIdentity() {
+        View root = findViewById(android.R.id.content);
+        if (root != null) applyIdentityTo(root);
+    }
+
+    private void applyIdentityTo(View v) {
+        if (v instanceof TextView && "avatarInitials".equals(v.getTag())) {
+            ((TextView) v).setText(initials(meName, meEmail));
+        }
+        if (v instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) v;
+            for (int i = 0; i < group.getChildCount(); i++) applyIdentityTo(group.getChildAt(i));
+        }
+    }
+
+    private String initials(String name, String email) {
+        String source = name != null && !name.isEmpty() ? name : (email == null ? "?" : email);
+        String[] parts = source.trim().split("[\\s@._]+");
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < parts.length && out.length() < 2; i++) {
+            if (!parts[i].isEmpty()) out.append(parts[i].charAt(0));
+        }
+        return out.length() == 0 ? "?" : out.toString().toUpperCase(Locale.US);
+    }
+
+    private void registerFcmToken(FirebaseUser user) {
+        CleanAlertMessagingService.createChannel(this);
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_REQUEST);
+        }
+        FirebaseMessaging.getInstance().getToken().addOnSuccessListener(token -> {
+            Map<String, Object> update = new HashMap<>();
+            update.put("fcmToken", token);
+            db.collection("users").document(user.getUid()).set(update, SetOptions.merge());
+        });
+    }
+
+    private void goBack() {
+        show("resident".equals(meRole) ? R.layout.resident_home : R.layout.activity_login);
+    }
+
     private void logout() {
+        FirebaseUser user = auth == null ? null : auth.getCurrentUser();
+        if ("collector".equals(meRole) && user != null && db != null) {
+            Map<String, Object> off = new HashMap<>();
+            off.put("status", "offline");
+            db.collection("users").document(user.getUid()).set(off, SetOptions.merge());
+            db.collection("collectorLocations").document(user.getUid()).set(off, SetOptions.merge());
+        }
+        stopLocationBroadcast();
         if (auth != null) auth.signOut();
+        meName = meEmail = meRole = meLocality = null;
         show(R.layout.activity_login);
     }
 
@@ -368,6 +480,80 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         }
     }
 
+    private void setWasteCategory(String category) {
+        selectedWasteType = category;
+        java.util.Map<Integer, String> ids = new java.util.LinkedHashMap<>();
+        ids.put(R.id.catDry, "Dry Recyclable");
+        ids.put(R.id.catOrganic, "Organic (Wet)");
+        ids.put(R.id.catEwaste, "E-Waste");
+        ids.put(R.id.catOther, "Other");
+        for (Map.Entry<Integer, String> entry : ids.entrySet()) {
+            TextView chip = findViewById(entry.getKey());
+            if (chip == null) continue;
+            boolean selected = entry.getValue().equals(category);
+            chip.setBackgroundResource(selected ? R.drawable.bg_toggle_selected : 0);
+            chip.setTextColor(Color.parseColor(selected ? "#222222" : "#777777"));
+        }
+    }
+
+    private void captureLocationForSubmission() {
+        capturedLat = null;
+        capturedLng = null;
+        capturedAddress = null;
+        setWasteCategory(selectedWasteType);
+        TextView statusView = findViewById(R.id.tvLocationStatus);
+        if (statusView != null) statusView.setText("Getting your location\u2026");
+
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, LOCATION_PERMISSION_REQUEST);
+            return;
+        }
+        if (fusedLocationClient == null) {
+            if (statusView != null) statusView.setText("Location services unavailable on this device");
+            return;
+        }
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(location -> {
+                    if (location == null) {
+                        if (statusView != null) statusView.setText("Location unavailable \u2014 turn on GPS and try again");
+                        return;
+                    }
+                    capturedLat = location.getLatitude();
+                    capturedLng = location.getLongitude();
+                    resolveAddress(location, statusView);
+                })
+                .addOnFailureListener(error -> {
+                    if (statusView != null) statusView.setText("Could not get location: " + error.getMessage());
+                });
+    }
+
+    private void resolveAddress(Location location, TextView statusView) {
+        try {
+            Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+            @SuppressWarnings("deprecation")
+            List<Address> results = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+            if (results != null && !results.isEmpty()) {
+                Address address = results.get(0);
+                StringBuilder line = new StringBuilder();
+                if (address.getThoroughfare() != null) line.append(address.getThoroughfare());
+                else if (address.getSubLocality() != null) line.append(address.getSubLocality());
+                else if (address.getLocality() != null) line.append(address.getLocality());
+                if (address.getLocality() != null && line.indexOf(address.getLocality()) < 0) {
+                    if (line.length() > 0) line.append(", ");
+                    line.append(address.getLocality());
+                }
+                capturedAddress = line.length() > 0 ? line.toString() : address.getAddressLine(0);
+            }
+        } catch (Exception ignored) {
+            // Geocoder can be unavailable on some devices/emulators \u2014 fall back to raw coordinates below.
+        }
+        if (capturedAddress == null) {
+            capturedAddress = String.format(Locale.US, "%.4f, %.4f", capturedLat, capturedLng);
+        }
+        if (statusView != null) statusView.setText("Location: " + capturedAddress);
+    }
+
     private void submitWaste() {
         if (auth == null || db == null) {
             toast("Firebase is not ready. Sync the project and try again.");
@@ -408,10 +594,18 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                     submission.put("status", "pending");
                     submission.put("points", 20);
                     submission.put("createdAt", System.currentTimeMillis());
+                    submission.put("wasteType", selectedWasteType);
+                    if (capturedLat != null) submission.put("latitude", capturedLat);
+                    if (capturedLng != null) submission.put("longitude", capturedLng);
+                    if (capturedAddress != null) submission.put("address", capturedAddress);
                     db.collection("submissions").document(submissionId).set(submission)
                             .addOnSuccessListener(done -> {
                                 selectedPhotoUri = null;
                                 capturedPhotoBitmap = null;
+                                capturedLat = null;
+                                capturedLng = null;
+                                capturedAddress = null;
+                                selectedWasteType = "Dry Recyclable";
                                 show(R.layout.resident_submission_success);
                             })
                             .addOnFailureListener(error -> toast("Photo uploaded, but submission record failed"));
@@ -420,8 +614,10 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     }
 
     private void loadCollectorRequests() {
-        LinearLayout list = findViewById(R.id.collectorRequestList);
-        TextView status = findViewById(R.id.tvCollectorQueueStatus);
+        loadCollectorRequestsInto(findViewById(R.id.collectorRequestList), findViewById(R.id.tvCollectorQueueStatus), 30);
+    }
+
+    private void loadCollectorRequestsInto(LinearLayout list, TextView status, int max) {
         if (list == null || db == null) return;
         FirebaseUser user = auth == null ? null : auth.getCurrentUser();
         String myUid = user == null ? null : user.getUid();
@@ -432,6 +628,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                     list.removeAllViews();
                     int shown = 0;
                     for (QueryDocumentSnapshot doc : snapshot) {
+                        if (shown >= max) break;
                         String state = doc.getString("status");
                         String collectorId = doc.getString("collectorId");
                         boolean mine = myUid != null && myUid.equals(collectorId);
@@ -439,12 +636,43 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                         addSubmissionCard(list, doc.getId(), doc.getString("residentId"), state, false);
                         shown++;
                     }
-                    status.setText(shown == 0 ? "No pending collection requests right now." : shown + " request(s)");
+                    if (status != null) status.setText(shown == 0 ? "No pending collection requests right now." : shown + " request(s)");
+                    if (shown == 0) list.addView(infoRow("No collections assigned yet", "New pickups will show up here"));
                 })
-                .addOnFailureListener(error -> status.setText("Could not load requests. Check Firestore rules."));
+                .addOnFailureListener(error -> {
+                    if (status != null) status.setText("Could not load requests. Check Firestore rules.");
+                });
     }
 
+    private String adminListMode = "submissions";
+
+    private void showAdminUsers() { adminListMode = "users"; show(R.layout.admin_submissions); }
+    private void showAdminAssignRoutes() { adminListMode = "assign_routes"; show(R.layout.admin_submissions); }
+    private void showAdminRewards() { adminListMode = "rewards"; show(R.layout.admin_submissions); }
+    private void showAdminReports() { adminListMode = "reports"; show(R.layout.admin_submissions); }
+
     private void loadAdminSubmissions() {
+        TextView title = findViewById(R.id.tvAdminListTitle);
+        switch (adminListMode) {
+            case "users":
+                if (title != null) title.setText("Users & Collectors");
+                loadAdminUsers();
+                return;
+            case "assign_routes":
+                if (title != null) title.setText("Assign Collectors Route");
+                loadAdminAssignRoutesList();
+                return;
+            case "rewards":
+                if (title != null) title.setText("Rewards Catalogue");
+                loadAdminRewardsList();
+                return;
+            case "reports":
+                if (title != null) title.setText("Reports");
+                loadAdminReports();
+                return;
+            default:
+                if (title != null) title.setText("Review Submissions");
+        }
         LinearLayout list = findViewById(R.id.adminSubmissionList);
         TextView status = findViewById(R.id.tvAdminQueueStatus);
         if (list == null || db == null) return;
@@ -459,6 +687,245 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                     snapshot.getDocuments().forEach(doc -> addSubmissionCard(list, doc.getId(), doc.getString("residentId"), doc.getString("status"), true));
                 })
                 .addOnFailureListener(error -> status.setText("Could not load submissions. Check Firestore rules."));
+    }
+
+    private void loadAdminUsers() {
+        LinearLayout list = findViewById(R.id.adminSubmissionList);
+        TextView status = findViewById(R.id.tvAdminQueueStatus);
+        if (list == null || db == null) return;
+        db.collection("users").limit(200).get()
+                .addOnSuccessListener(snapshot -> {
+                    list.removeAllViews();
+                    List<DocumentSnapshot> docs = new java.util.ArrayList<>(snapshot.getDocuments());
+                    docs.sort((a, b) -> String.valueOf(a.getString("role")).compareTo(String.valueOf(b.getString("role"))));
+                    if (status != null) status.setText(docs.size() + " user(s)");
+                    if (docs.isEmpty()) list.addView(infoRow("No users yet", ""));
+                    for (DocumentSnapshot doc : docs) {
+                        String role = doc.getString("role");
+                        list.addView(infoRow(capitalize(doc.getString("name")) + "  •  " + (role == null ? "resident" : role),
+                                String.valueOf(doc.getString("email"))));
+                    }
+                })
+                .addOnFailureListener(error -> { if (status != null) status.setText("Could not load users."); });
+    }
+
+    private void loadAdminAssignRoutesList() {
+        LinearLayout list = findViewById(R.id.adminSubmissionList);
+        TextView status = findViewById(R.id.tvAdminQueueStatus);
+        if (list == null || db == null) return;
+        db.collection("users").whereEqualTo("role", "collector").get()
+                .addOnSuccessListener(snapshot -> {
+                    list.removeAllViews();
+                    List<DocumentSnapshot> collectors = snapshot.getDocuments();
+                    if (status != null) status.setText(collectors.size() + " collector(s) registered");
+                    if (collectors.isEmpty()) {
+                        list.addView(infoRow("No collectors found", "Register a collector account first"));
+                        return;
+                    }
+                    for (DocumentSnapshot doc : collectors) {
+                        String collectorUid = doc.getId();
+                        String name = capitalize(doc.getString("name"));
+                        String email = doc.getString("email");
+                        addAdminCollectorRouteRow(list, collectorUid, name, email);
+                    }
+                })
+                .addOnFailureListener(error -> { if (status != null) status.setText("Could not load collectors list."); });
+    }
+
+    private void addAdminCollectorRouteRow(LinearLayout list, String collectorUid, String name, String email) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackgroundResource(R.drawable.bg_white_card);
+        card.setPadding(18, 16, 18, 16);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.setMargins(0, 0, 0, 12);
+        card.setLayoutParams(params);
+
+        TextView nameView = new TextView(this);
+        nameView.setText(name + " (" + (email == null ? "" : email) + ")");
+        nameView.setTextColor(Color.rgb(17, 24, 39));
+        nameView.setTextSize(15);
+        nameView.setTypeface(null, android.graphics.Typeface.BOLD);
+        card.addView(nameView);
+
+        TextView routeInfo = new TextView(this);
+        routeInfo.setText("Loading route…");
+        routeInfo.setTextColor(Color.rgb(107, 114, 128));
+        routeInfo.setTextSize(12);
+        LinearLayout.LayoutParams infoParams = new LinearLayout.LayoutParams(-1, -2);
+        infoParams.setMargins(0, 6, 0, 10);
+        card.addView(routeInfo, infoParams);
+
+        TextView assignBtn = queueButton("Assign / Edit Route");
+        card.addView(assignBtn, new LinearLayout.LayoutParams(-1, 44));
+
+        list.addView(card);
+
+        db.collection("collectorRoutes").document(collectorUid).get()
+                .addOnSuccessListener(routeDoc -> {
+                    if (routeDoc.exists() && routeDoc.contains("area")) {
+                        String area = routeDoc.getString("area");
+                        String streets = routeDoc.getString("streets");
+                        String shift = routeDoc.getString("shift");
+                        routeInfo.setText("Route: " + area + "\nStreets: " + (streets == null ? "None" : streets) + "\nShift: " + (shift == null ? "Not set" : shift));
+                        assignBtn.setOnClickListener(v -> showAssignRouteDialog(collectorUid, name, area, streets, shift));
+                    } else {
+                        routeInfo.setText("No route assigned yet");
+                        assignBtn.setOnClickListener(v -> showAssignRouteDialog(collectorUid, name, "", "", ""));
+                    }
+                })
+                .addOnFailureListener(err -> {
+                    routeInfo.setText("No route assigned yet");
+                    assignBtn.setOnClickListener(v -> showAssignRouteDialog(collectorUid, name, "", "", ""));
+                });
+    }
+
+    private void showAssignRouteDialog(String collectorUid, String collectorName, String currentArea, String currentStreets, String currentShift) {
+        android.widget.LinearLayout box = dialogFieldBox();
+        android.widget.EditText areaField = dialogField(box, "Route Area / Sector Name", currentArea);
+        android.widget.EditText streetsField = dialogField(box, "Covered Streets / Landmarks", currentStreets);
+        android.widget.EditText shiftField = dialogField(box, "Shift Timings (e.g., 7 AM - 1 PM)", currentShift);
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Assign Route: " + collectorName)
+                .setView(box)
+                .setPositiveButton("Save Route", (d, w) -> {
+                    String area = areaField.getText().toString().trim();
+                    String streets = streetsField.getText().toString().trim();
+                    String shift = shiftField.getText().toString().trim();
+                    if (area.isEmpty()) {
+                        toast("Enter a route area / sector name");
+                        return;
+                    }
+                    Map<String, Object> routeData = new HashMap<>();
+                    routeData.put("collectorUid", collectorUid);
+                    routeData.put("collectorName", collectorName);
+                    routeData.put("area", area);
+                    routeData.put("streets", streets);
+                    routeData.put("shift", shift);
+                    routeData.put("updatedAt", System.currentTimeMillis());
+                    routeData.put("updatedBy", meEmail);
+
+                    db.collection("collectorRoutes").document(collectorUid).set(routeData, SetOptions.merge())
+                            .addOnSuccessListener(done -> {
+                                toast("Route updated for " + collectorName);
+                                loadAdminAssignRoutesList();
+                            })
+                            .addOnFailureListener(error -> toast("Failed to update route. Check Firestore rules."));
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void loadAdminRewardsList() {
+        LinearLayout list = findViewById(R.id.adminSubmissionList);
+        TextView status = findViewById(R.id.tvAdminQueueStatus);
+        if (list == null || db == null) return;
+        list.removeAllViews();
+        TextView addButton = queueButton("+ Add reward");
+        list.addView(addButton, new LinearLayout.LayoutParams(-1, 46));
+        addButton.setOnClickListener(v -> showAddRewardDialog());
+        db.collection("rewards").limit(100).get()
+                .addOnSuccessListener(snapshot -> {
+                    if (status != null) status.setText(snapshot.size() + " reward(s)");
+                    for (DocumentSnapshot doc : snapshot.getDocuments()) {
+                        list.addView(adminRewardRow(doc.getId(), doc.getString("name"), safeLong(doc, "pointsRequired"),
+                                !Boolean.FALSE.equals(doc.getBoolean("active"))));
+                    }
+                })
+                .addOnFailureListener(error -> { if (status != null) status.setText("Could not load rewards."); });
+    }
+
+    private void showAddRewardDialog() {
+        android.widget.LinearLayout box = dialogFieldBox();
+        android.widget.EditText nameField = dialogField(box, "Reward name", null);
+        android.widget.EditText descField = dialogField(box, "Description", null);
+        android.widget.EditText pointsField = dialogField(box, "Points required", null);
+        pointsField.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Add reward")
+                .setView(box)
+                .setPositiveButton("Add", (d, w) -> {
+                    String name = nameField.getText().toString().trim();
+                    long points;
+                    try { points = Long.parseLong(pointsField.getText().toString().trim()); }
+                    catch (Exception e) { toast("Enter a valid points number"); return; }
+                    if (name.isEmpty()) { toast("Enter a name"); return; }
+                    Map<String, Object> reward = new HashMap<>();
+                    reward.put("name", name);
+                    reward.put("description", descField.getText().toString().trim());
+                    reward.put("pointsRequired", points);
+                    reward.put("active", true);
+                    reward.put("createdAt", System.currentTimeMillis());
+                    db.collection("rewards").document().set(reward)
+                            .addOnSuccessListener(done -> { toast("Reward added"); loadAdminRewardsList(); })
+                            .addOnFailureListener(error -> toast("Could not add reward"));
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private LinearLayout adminRewardRow(String rewardId, String name, long points, boolean active) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setBackgroundResource(R.drawable.bg_white_card);
+        row.setPadding(18, 16, 18, 16);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.setMargins(0, 10, 0, 0);
+        row.setLayoutParams(params);
+
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        TextView nameView = new TextView(this);
+        nameView.setText((name == null ? "Reward" : name) + (active ? "" : "  (inactive)"));
+        nameView.setTextColor(active ? Color.rgb(17, 24, 39) : Color.rgb(156, 163, 175));
+        nameView.setTextSize(14);
+        nameView.setTypeface(null, android.graphics.Typeface.BOLD);
+        col.addView(nameView);
+        TextView costView = new TextView(this);
+        costView.setText(points + " points");
+        costView.setTextColor(Color.rgb(107, 114, 128));
+        costView.setTextSize(12);
+        col.addView(costView);
+        row.addView(col, new LinearLayout.LayoutParams(0, -2, 1));
+
+        TextView toggle = queueButton(active ? "Deactivate" : "Activate");
+        toggle.setOnClickListener(v -> {
+            Map<String, Object> update = new HashMap<>();
+            update.put("active", !active);
+            db.collection("rewards").document(rewardId).set(update, SetOptions.merge())
+                    .addOnSuccessListener(done -> loadAdminRewardsList());
+        });
+        row.addView(toggle, new LinearLayout.LayoutParams(-2, 44));
+        return row;
+    }
+
+    // Real aggregate counts computed from Firestore — no charts library, no invented numbers.
+    private void loadAdminReports() {
+        LinearLayout list = findViewById(R.id.adminSubmissionList);
+        TextView status = findViewById(R.id.tvAdminQueueStatus);
+        if (list == null || db == null) return;
+        list.removeAllViews();
+        if (status != null) status.setText("Live counts from Firestore");
+
+        countInto(list, db.collection("users").whereEqualTo("role", "resident"), "Total residents");
+        countInto(list, db.collection("users").whereEqualTo("role", "collector"), "Total collectors");
+        countInto(list, db.collection("submissions"), "Total waste submissions");
+        countInto(list, db.collection("submissions").whereEqualTo("status", "pending"), "Pending review");
+        countInto(list, db.collection("submissions").whereEqualTo("status", "completed"), "Collections completed");
+        countInto(list, db.collection("redemptions"), "Rewards redeemed");
+
+        db.collection("submissions").whereEqualTo("status", "approved")
+                .aggregate(AggregateField.sum("points")).get(AggregateSource.SERVER)
+                .addOnSuccessListener(r -> list.addView(infoRow("Total points awarded", String.valueOf(r.get(AggregateField.sum("points"))))))
+                .addOnFailureListener(error -> list.addView(infoRow("Total points awarded", "unavailable")));
+    }
+
+    private void countInto(LinearLayout list, Query query, String label) {
+        query.count().get(AggregateSource.SERVER)
+                .addOnSuccessListener(r -> list.addView(infoRow(label, String.valueOf(r.getCount()))))
+                .addOnFailureListener(error -> list.addView(infoRow(label, "unavailable")));
     }
 
     private void addSubmissionCard(LinearLayout list, String submissionId, String residentId, String state, boolean admin) {
@@ -646,10 +1113,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             if (streakView != null) streakView.setText(safeLong(snapshot, "streak") + " Days");
         });
 
-        for (int id : new int[]{R.id.activityWasteDisposal, R.id.activityBinSetup, R.id.activitySignupBonus}) {
-            View sample = findViewById(id);
-            if (sample != null) sample.setVisibility(View.GONE);
-        }
         LinearLayout list = findViewById(R.id.liveActivityList);
         if (list == null) return;
         db.collection("submissions").whereEqualTo("residentId", user.getUid()).limit(30).get()
@@ -693,16 +1156,13 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         String myUid = user == null ? null : user.getUid();
 
         Query global = db.collection("leaderboard").orderBy("points", Query.Direction.DESCENDING).limit(20);
-        if ("locality".equals(leaderboardScope) && myUid != null) {
-            db.collection("users").document(myUid).get().addOnSuccessListener(me -> {
-                String locality = me.getString("locality");
-                Query scoped = locality == null ? global
-                        : db.collection("leaderboard").whereEqualTo("locality", locality)
-                            .orderBy("points", Query.Direction.DESCENDING).limit(20);
-                renderLeaderboard(scoped, list, staticSample, myUid, locality);
-            });
+        if ("locality".equals(leaderboardScope) && meLocality != null) {
+            Query scoped = db.collection("leaderboard").whereEqualTo("locality", meLocality)
+                    .orderBy("points", Query.Direction.DESCENDING).limit(20);
+            renderLeaderboard(scoped, list, staticSample, myUid, meLocality);
         } else {
-            renderLeaderboard(global, list, staticSample, myUid, null);
+            renderLeaderboard(global, list, staticSample, myUid,
+                    "locality".equals(leaderboardScope) ? "your locality (not set yet)" : null);
         }
     }
 
@@ -743,34 +1203,128 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     }
 
     private void loadMyRewards() {
-        View cardAmazon = findViewById(R.id.cardAmazon);
-        View cardCafe = findViewById(R.id.cardCafeCoffeeDay);
-        View cardRedeemedSample = findViewById(R.id.cardRedeemed);
-        LinearLayout liveList = findViewById(R.id.liveRedeemedList);
+        LinearLayout liveActive = findViewById(R.id.liveActiveRewardsList);
+        LinearLayout liveRedeemed = findViewById(R.id.liveRedeemedList);
         boolean showActive = "active".equals(rewardsTab);
-        if (cardAmazon != null) cardAmazon.setVisibility(showActive ? View.VISIBLE : View.GONE);
-        if (cardCafe != null) cardCafe.setVisibility(showActive ? View.VISIBLE : View.GONE);
-        if (cardRedeemedSample != null) cardRedeemedSample.setVisibility(View.GONE);
-        if (liveList == null) return;
-        liveList.removeAllViews();
+        if (liveActive != null) liveActive.setVisibility(showActive ? View.VISIBLE : View.GONE);
+        if (liveRedeemed != null) liveRedeemed.setVisibility(showActive ? View.GONE : View.VISIBLE);
+
+        if (showActive) {
+            renderRewardCatalog(liveActive);
+            return;
+        }
+        if (liveRedeemed == null) return;
+        liveRedeemed.removeAllViews();
         FirebaseUser user = auth == null ? null : auth.getCurrentUser();
-        if (showActive || db == null || user == null) return;
+        if (db == null || user == null) return;
         db.collection("redemptions").whereEqualTo("residentId", user.getUid()).limit(30).get()
                 .addOnSuccessListener(snapshot -> {
                     List<DocumentSnapshot> docs = new java.util.ArrayList<>(snapshot.getDocuments());
                     docs.sort((a, b) -> Long.compare(safeLong(b, "createdAt"), safeLong(a, "createdAt")));
                     if (docs.isEmpty()) {
-                        liveList.addView(infoRow("No rewards redeemed yet", "Redeem a reward from the Active tab"));
+                        liveRedeemed.addView(infoRow("No rewards redeemed yet", "Redeem a reward from the Active tab"));
                         return;
                     }
                     for (DocumentSnapshot doc : docs) {
-                        liveList.addView(infoRow(doc.getString("rewardName") + " \u00b7 Code " + doc.getString("code"),
+                        liveRedeemed.addView(infoRow(doc.getString("rewardName") + " \u00b7 Code " + doc.getString("code"),
                                 formatDate(safeLong(doc, "createdAt"))));
                     }
                 });
     }
 
-    private void redeemReward(String rewardName, int cost) {
+    private void loadRewardsCatalog() {
+        FirebaseUser user = auth == null ? null : auth.getCurrentUser();
+        if (user != null && db != null) {
+            db.collection("users").document(user.getUid()).get().addOnSuccessListener(snapshot -> {
+                TextView balance = findViewById(R.id.tvRewardsBalance);
+                if (balance != null) balance.setText(String.valueOf(safeLong(snapshot, "points")));
+            });
+        }
+        renderRewardCatalog(findViewById(R.id.liveRewardsCatalog));
+    }
+
+    // Shared by the main Rewards screen and the My Rewards "Active" tab \u2014 both show
+    // whatever reward documents actually exist in Firestore, nothing invented.
+    private void renderRewardCatalog(LinearLayout container) {
+        if (container == null || db == null) return;
+        FirebaseUser user = auth == null ? null : auth.getCurrentUser();
+        long[] myPoints = {0L};
+        Runnable renderWithPoints = () -> db.collection("rewards").whereEqualTo("active", true).limit(30).get()
+                .addOnSuccessListener(snapshot -> {
+                    container.removeAllViews();
+                    List<DocumentSnapshot> docs = snapshot.getDocuments();
+                    if (docs.isEmpty()) {
+                        container.addView(infoRow("No rewards available right now", "Check back later"));
+                        return;
+                    }
+                    for (DocumentSnapshot doc : docs) {
+                        container.addView(rewardCard(doc.getId(), doc.getString("name"), doc.getString("description"),
+                                safeLong(doc, "pointsRequired"), myPoints[0]));
+                    }
+                })
+                .addOnFailureListener(error -> {
+                    container.removeAllViews();
+                    container.addView(infoRow("Could not load rewards", "Check Firestore rules/connection"));
+                });
+        if (user != null) {
+            db.collection("users").document(user.getUid()).get().addOnSuccessListener(snapshot -> {
+                myPoints[0] = safeLong(snapshot, "points");
+                renderWithPoints.run();
+            }).addOnFailureListener(error -> renderWithPoints.run());
+        } else {
+            renderWithPoints.run();
+        }
+    }
+
+    private LinearLayout rewardCard(String rewardId, String name, String description, long cost, long myPoints) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setBackgroundResource(R.drawable.bg_white_card);
+        card.setPadding(18, 16, 18, 16);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.setMargins(0, 0, 0, 10);
+        card.setLayoutParams(params);
+
+        LinearLayout textCol = new LinearLayout(this);
+        textCol.setOrientation(LinearLayout.VERTICAL);
+        TextView nameView = new TextView(this);
+        nameView.setText(name == null ? "Reward" : name);
+        nameView.setTextColor(Color.rgb(17, 24, 39));
+        nameView.setTextSize(14);
+        nameView.setTypeface(null, android.graphics.Typeface.BOLD);
+        textCol.addView(nameView);
+        if (description != null && !description.isEmpty()) {
+            TextView descView = new TextView(this);
+            descView.setText(description);
+            descView.setTextColor(Color.rgb(107, 114, 128));
+            descView.setTextSize(12);
+            textCol.addView(descView);
+        }
+        TextView costView = new TextView(this);
+        costView.setText(cost + " Points");
+        costView.setTextColor(Color.rgb(32, 185, 104));
+        costView.setTextSize(12);
+        costView.setTypeface(null, android.graphics.Typeface.BOLD);
+        textCol.addView(costView);
+        card.addView(textCol, new LinearLayout.LayoutParams(0, -2, 1));
+
+        TextView redeemBtn = new TextView(this);
+        boolean canAfford = myPoints >= cost;
+        redeemBtn.setText("Redeem Now");
+        redeemBtn.setTextSize(12);
+        redeemBtn.setTypeface(null, android.graphics.Typeface.BOLD);
+        redeemBtn.setPadding(24, 14, 24, 14);
+        redeemBtn.setBackgroundResource(R.drawable.bg_toggle_selected);
+        redeemBtn.setTextColor(Color.parseColor(canAfford ? "#20B968" : "#AAAAAA"));
+        if (canAfford) {
+            redeemBtn.setOnClickListener(v -> redeemReward(rewardId, name == null ? "Reward" : name, (int) cost));
+        }
+        card.addView(redeemBtn);
+        return card;
+    }
+
+    private void redeemReward(String rewardId, String rewardName, int cost) {
         FirebaseUser user = auth == null ? null : auth.getCurrentUser();
         if (user == null || db == null) {
             toast(firebaseUnavailableMessage());
@@ -795,6 +1349,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
             Map<String, Object> redemption = new HashMap<>();
             redemption.put("residentId", user.getUid());
+            redemption.put("rewardId", rewardId);
             redemption.put("rewardName", rewardName);
             redemption.put("pointsCost", (long) cost);
             redemption.put("code", code);
@@ -843,6 +1398,40 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                     if (total != null) total.setText(String.valueOf(snapshot.size()));
                     if (completed != null) completed.setText(String.valueOf(completedCount));
                 });
+        LinearLayout pending = findViewById(R.id.liveDashboardPending);
+        if (pending != null) loadCollectorRequestsInto(pending, null, 2);
+        loadCollectorRoute();
+    }
+
+    private void loadCollectorRoute() {
+        TextView areaView = findViewById(R.id.tvRouteArea);
+        TextView streetsView = findViewById(R.id.tvRouteStreets);
+        TextView shiftView = findViewById(R.id.tvRouteShift);
+        if (areaView == null || db == null) return;
+
+        FirebaseUser user = auth == null ? null : auth.getCurrentUser();
+        if (user == null) return;
+
+        db.collection("collectorRoutes").document(user.getUid()).get()
+                .addOnSuccessListener(routeDoc -> {
+                    if (routeDoc.exists() && routeDoc.contains("area")) {
+                        String area = routeDoc.getString("area");
+                        String streets = routeDoc.getString("streets");
+                        String shift = routeDoc.getString("shift");
+                        areaView.setText(area == null || area.isEmpty() ? "Assigned Route" : area);
+                        if (streetsView != null) streetsView.setText(streets == null || streets.isEmpty() ? "No street details specified" : "Streets: " + streets);
+                        if (shiftView != null) shiftView.setText(shift == null || shift.isEmpty() ? "" : "Shift: " + shift);
+                    } else {
+                        areaView.setText("No route assigned yet");
+                        if (streetsView != null) streetsView.setText("Contact your administrator to receive your daily collection route.");
+                        if (shiftView != null) shiftView.setText("");
+                    }
+                })
+                .addOnFailureListener(err -> {
+                    areaView.setText("No route assigned yet");
+                    if (streetsView != null) streetsView.setText("Contact your administrator to receive your daily collection route.");
+                    if (shiftView != null) shiftView.setText("");
+                });
     }
 
     private void toggleCollectorStatus() {
@@ -851,12 +1440,103 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         DocumentReference ref = db.collection("users").document(user.getUid());
         ref.get().addOnSuccessListener(snapshot -> {
             boolean goingOnline = !"online".equals(snapshot.getString("status"));
+            if (goingOnline && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST);
+                toast("Location permission is needed to go online");
+                return;
+            }
             Map<String, Object> update = new HashMap<>();
             update.put("status", goingOnline ? "online" : "offline");
             ref.set(update, SetOptions.merge())
-                    .addOnSuccessListener(done -> loadCollectorDashboard())
+                    .addOnSuccessListener(done -> {
+                        Map<String, Object> locUpdate = new HashMap<>();
+                        locUpdate.put("status", goingOnline ? "online" : "offline");
+                        locUpdate.put("name", snapshot.getString("name"));
+                        db.collection("collectorLocations").document(user.getUid()).set(locUpdate, SetOptions.merge());
+                        if (goingOnline) startLocationBroadcast(); else stopLocationBroadcast();
+                        loadCollectorDashboard();
+                    })
                     .addOnFailureListener(error -> toast("Could not update status"));
         });
+    }
+
+    // Pushes this collector's real position to Firestore every ~15s while they're online.
+    // No simulated movement, no fixed coordinate \u2014 whatever the device's GPS actually reports.
+    @SuppressWarnings("MissingPermission")
+    private void startLocationBroadcast() {
+        FirebaseUser user = auth == null ? null : auth.getCurrentUser();
+        if (user == null || db == null || fusedLocationClient == null || broadcastingLocation) return;
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return;
+
+        DocumentReference ref = db.collection("collectorLocations").document(user.getUid());
+        broadcastCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(@NonNull LocationResult result) {
+                Location location = result.getLastLocation();
+                if (location == null) return;
+                Map<String, Object> update = new HashMap<>();
+                update.put("latitude", location.getLatitude());
+                update.put("longitude", location.getLongitude());
+                update.put("locationUpdatedAt", System.currentTimeMillis());
+                update.put("status", "online");
+                ref.set(update, SetOptions.merge());
+            }
+        };
+        LocationRequest request = new LocationRequest.Builder(15000)
+                .setMinUpdateIntervalMillis(10000)
+                .setPriority(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY)
+                .build();
+        fusedLocationClient.requestLocationUpdates(request, broadcastCallback, getMainLooper());
+        broadcastingLocation = true;
+    }
+
+    private void stopLocationBroadcast() {
+        if (fusedLocationClient != null && broadcastCallback != null) {
+            fusedLocationClient.removeLocationUpdates(broadcastCallback);
+        }
+        broadcastCallback = null;
+        broadcastingLocation = false;
+    }
+
+    // Live markers for every OTHER online collector, kept in sync via a real-time Firestore
+    // listener \u2014 markers actually move as their location documents update, nothing scripted.
+    private void listenForLiveCollectors() {
+        if (googleMap == null || db == null) return;
+        FirebaseUser user = auth == null ? null : auth.getCurrentUser();
+        String myUid = user == null ? null : user.getUid();
+        if (liveCollectorsListener != null) liveCollectorsListener.remove();
+        liveCollectorsListener = db.collection("collectorLocations")
+                .whereEqualTo("status", "online")
+                .addSnapshotListener((snapshot, error) -> {
+                    if (error != null || snapshot == null || googleMap == null) return;
+                    java.util.Set<String> seen = new java.util.HashSet<>();
+                    for (DocumentSnapshot doc : snapshot.getDocuments()) {
+                        if (doc.getId().equals(myUid)) continue; // don't mark yourself, that's the blue dot
+                        Double lat = doc.getDouble("latitude");
+                        Double lng = doc.getDouble("longitude");
+                        if (lat == null || lng == null) continue;
+                        seen.add(doc.getId());
+                        String label = capitalize(doc.getString("name"));
+                        com.google.android.gms.maps.model.Marker marker = liveCollectorMarkers.get(doc.getId());
+                        LatLng pos = new LatLng(lat, lng);
+                        if (marker == null) {
+                            marker = googleMap.addMarker(new MarkerOptions().position(pos).title(label + " (online)")
+                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+                            liveCollectorMarkers.put(doc.getId(), marker);
+                        } else {
+                            marker.setPosition(pos);
+                        }
+                    }
+                    // remove markers for collectors who went offline or stopped reporting
+                    java.util.Iterator<Map.Entry<String, com.google.android.gms.maps.model.Marker>> it = liveCollectorMarkers.entrySet().iterator();
+                    while (it.hasNext()) {
+                        Map.Entry<String, com.google.android.gms.maps.model.Marker> entry = it.next();
+                        if (!seen.contains(entry.getKey())) {
+                            entry.getValue().remove();
+                            it.remove();
+                        }
+                    }
+                });
     }
 
     private long safeLong(DocumentSnapshot doc, String field) {
@@ -985,7 +1665,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         profile.put("createdAt", System.currentTimeMillis());
         profile.put("points", 0L);
         profile.put("streak", 0L);
-        profile.put("locality", DEFAULT_LOCALITY);
         profile.put("name", displayName);
         db.collection("users").document(user.getUid()).set(profile)
                 .addOnSuccessListener(done -> {
@@ -993,35 +1672,445 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                     board.put("name", displayName);
                     board.put("points", 0L);
                     board.put("streak", 0L);
-                    board.put("locality", DEFAULT_LOCALITY);
                     db.collection("leaderboard").document(user.getUid()).set(board);
                     routeUser(user);
                 })
                 .addOnFailureListener(error -> toast("Signed in, but profile setup failed"));
     }
 
-    private void setupLiveMap() {
-        if (BuildConfig.MAPS_API_KEY.startsWith("YOUR_")) return;
-        FrameLayout container = findViewById(R.id.mapContainer);
-        if (container == null) return;
-        View designMap = container.getChildAt(0);
-        if (mapView == null) {
-            if (designMap != null) container.removeView(designMap);
-            mapView = new MapView(this);
-            container.addView(mapView, 0);
-            mapView.onCreate(null);
-            mapView.getMapAsync(this);
+    private void loadPastSubmissions(String filter) {
+        TextView all = findViewById(R.id.filterAll);
+        TextView organic = findViewById(R.id.filterOrganic);
+        if (all != null && organic != null) {
+            boolean isAll = "all".equals(filter);
+            all.setBackgroundResource(isAll ? R.drawable.bg_toggle_selected : 0);
+            all.setTextColor(Color.parseColor(isAll ? "#222222" : "#777777"));
+            organic.setBackgroundResource(!isAll ? R.drawable.bg_toggle_selected : 0);
+            organic.setTextColor(Color.parseColor(!isAll ? "#222222" : "#777777"));
         }
+        LinearLayout live = findViewById(R.id.liveSubmissionList);
+        View staticSample = findViewById(R.id.staticSubmissionList);
+        if (live == null || db == null) return;
+        FirebaseUser user = auth == null ? null : auth.getCurrentUser();
+        if (user == null) return;
+        db.collection("submissions").whereEqualTo("residentId", user.getUid()).limit(100).get()
+                .addOnSuccessListener(snapshot -> {
+                    if (staticSample != null) staticSample.setVisibility(View.GONE);
+                    List<DocumentSnapshot> docs = new java.util.ArrayList<>(snapshot.getDocuments());
+                    docs.sort((a, b) -> Long.compare(safeLong(b, "createdAt"), safeLong(a, "createdAt")));
+                    live.removeAllViews();
+                    int shown = 0;
+                    for (DocumentSnapshot doc : docs) {
+                        String type = doc.getString("wasteType");
+                        if ("organic".equals(filter) && !"Organic (Wet)".equals(type)) continue;
+                        live.addView(submissionRow(type == null ? "Waste submission" : type,
+                                formatDate(safeLong(doc, "createdAt")), safeLong(doc, "points"), doc.getString("status")));
+                        shown++;
+                    }
+                    if (shown == 0) live.addView(infoRow("No submissions yet", "Submit a photo to earn points"));
+                })
+                .addOnFailureListener(error -> {
+                    if (staticSample != null) staticSample.setVisibility(View.GONE);
+                    live.removeAllViews();
+                    live.addView(infoRow("Could not load submissions", "Check Firestore rules/connection"));
+                });
+    }
+
+    private LinearLayout submissionRow(String type, String date, long points, String status) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setBackgroundResource(R.drawable.bg_white_card);
+        row.setPadding(18, 16, 18, 16);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.setMargins(0, 0, 0, 10);
+        row.setLayoutParams(params);
+
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        TextView typeView = new TextView(this);
+        typeView.setText(type);
+        typeView.setTextColor(Color.rgb(17, 24, 39));
+        typeView.setTextSize(14);
+        typeView.setTypeface(null, android.graphics.Typeface.BOLD);
+        col.addView(typeView);
+        TextView dateView = new TextView(this);
+        dateView.setText(date);
+        dateView.setTextColor(Color.rgb(107, 114, 128));
+        dateView.setTextSize(12);
+        col.addView(dateView);
+        row.addView(col, new LinearLayout.LayoutParams(0, -2, 1));
+
+        LinearLayout rightCol = new LinearLayout(this);
+        rightCol.setOrientation(LinearLayout.VERTICAL);
+        rightCol.setGravity(Gravity.END);
+        TextView pointsView = new TextView(this);
+        pointsView.setText("+" + points + " Pts");
+        pointsView.setTextColor(Color.rgb(32, 185, 104));
+        pointsView.setTextSize(13);
+        pointsView.setTypeface(null, android.graphics.Typeface.BOLD);
+        rightCol.addView(pointsView);
+        TextView statusView = new TextView(this);
+        statusView.setText(describeStatus(status));
+        statusView.setTextColor(Color.rgb(107, 114, 128));
+        statusView.setTextSize(11);
+        rightCol.addView(statusView);
+        row.addView(rightCol);
+        return row;
+    }
+
+    private void loadResidentProfile() {
+        if (meName != null) {
+            TextView name = findViewById(R.id.tvName);
+            TextView email = findViewById(R.id.tvEmail);
+            TextView fullName = findViewById(R.id.tvFullName);
+            TextView emailAddress = findViewById(R.id.tvEmailAddress);
+            TextView location = findViewById(R.id.tvLocation);
+            if (name != null) name.setText(capitalize(meName));
+            if (email != null) email.setText(meEmail);
+            if (fullName != null) fullName.setText(capitalize(meName));
+            if (emailAddress != null) emailAddress.setText(meEmail);
+            if (location != null) location.setText(meLocality == null ? "Not set" : meLocality);
+        }
+    }
+
+    // The design's "collection alert" screen has no data model of its own — it's a push
+    // notification landing spot. This shows the resident's most recent active pickup instead
+    // of inventing a collector/location that doesn't exist.
+    private void loadCollectionAlert() {
+        FirebaseUser user = auth == null ? null : auth.getCurrentUser();
+        if (user == null || db == null) return;
+        db.collection("submissions").whereEqualTo("residentId", user.getUid())
+                .whereEqualTo("status", "assigned").limit(10).get()
+                .addOnSuccessListener(snapshot -> {
+                    TextView location = findViewById(R.id.tvLocation);
+                    TextView collectorName = findViewById(R.id.tvCollectorName);
+                    TextView collectorId = findViewById(R.id.tvCollectorId);
+                    if (snapshot.isEmpty()) {
+                        if (location != null) location.setText("No active pickup right now");
+                        if (collectorName != null) collectorName.setText("—");
+                        if (collectorId != null) collectorId.setText("");
+                        return;
+                    }
+                    DocumentSnapshot doc = snapshot.getDocuments().get(0);
+                    String collectorUid = doc.getString("collectorId");
+                    if (location != null) location.setText(doc.getString("address") == null ? "Address not captured" : doc.getString("address"));
+                    if (collectorUid == null) return;
+                    db.collection("users").document(collectorUid).get().addOnSuccessListener(c -> {
+                        if (collectorName != null) collectorName.setText(capitalize(c.getString("name")));
+                        if (collectorId != null) collectorId.setText("Collector ID: COL-" + collectorUid.substring(0, Math.min(6, collectorUid.length())).toUpperCase(Locale.US));
+                    });
+                });
+    }
+
+    private void openNavigation() {
+        if (selectedTarget == null) {
+            toast("Tap a pin on the map first");
+            return;
+        }
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW,
+                    android.net.Uri.parse("google.navigation:q=" + selectedTarget.latitude + "," + selectedTarget.longitude)));
+        } catch (Exception e) {
+            toast("No navigation app available");
+        }
+    }
+
+    private void showEditProfile(int returnLayout) {
+        FirebaseUser user = auth == null ? null : auth.getCurrentUser();
+        if (user == null || db == null) return;
+        android.widget.LinearLayout box = dialogFieldBox();
+        android.widget.EditText nameField = dialogField(box, "Full name", meName);
+        android.widget.EditText localityField = dialogField(box, "Locality", meLocality);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Edit profile")
+                .setView(box)
+                .setPositiveButton("Save", (d, w) -> {
+                    String newName = nameField.getText().toString().trim();
+                    String newLocality = localityField.getText().toString().trim();
+                    Map<String, Object> update = new HashMap<>();
+                    if (!newName.isEmpty()) update.put("name", newName);
+                    if (!newLocality.isEmpty()) update.put("locality", newLocality);
+                    db.collection("users").document(user.getUid()).set(update, SetOptions.merge())
+                            .addOnSuccessListener(done -> {
+                                if (!newName.isEmpty()) meName = newName;
+                                if (!newLocality.isEmpty()) meLocality = newLocality;
+                                if (!newName.isEmpty() && "resident".equals(meRole)) {
+                                    Map<String, Object> board = new HashMap<>();
+                                    board.put("name", newName);
+                                    if (!newLocality.isEmpty()) board.put("locality", newLocality);
+                                    db.collection("leaderboard").document(user.getUid()).set(board, SetOptions.merge());
+                                }
+                                toast("Profile updated");
+                                show(returnLayout);
+                            })
+                            .addOnFailureListener(error -> toast("Could not update profile"));
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showChangePassword(int returnLayout) {
+        if (auth == null || meEmail == null) return;
+        auth.sendPasswordResetEmail(meEmail)
+                .addOnSuccessListener(done -> toast("Password reset link sent to " + meEmail))
+                .addOnFailureListener(error -> toast("Could not send reset email: " + error.getMessage()));
+    }
+
+    private void showNotificationSettings(int returnLayout) {
+        showSettings(returnLayout);
+    }
+
+    private void showSettings(int returnLayout) {
+        FirebaseUser user = auth == null ? null : auth.getCurrentUser();
+        if (user == null || db == null) return;
+        db.collection("users").document(user.getUid()).get().addOnSuccessListener(snapshot -> {
+            boolean enabled = !Boolean.FALSE.equals(snapshot.getBoolean("notificationsEnabled"));
+            android.widget.Switch toggle = new android.widget.Switch(this);
+            toggle.setText("Push notifications");
+            toggle.setChecked(enabled);
+            toggle.setPadding(40, 30, 40, 30);
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("Notification settings")
+                    .setView(toggle)
+                    .setPositiveButton("Save", (d, w) -> {
+                        Map<String, Object> update = new HashMap<>();
+                        update.put("notificationsEnabled", toggle.isChecked());
+                        db.collection("users").document(user.getUid()).set(update, SetOptions.merge());
+                        toast("Saved");
+                    })
+                    .setNegativeButton("Close", null)
+                    .show();
+        });
+    }
+
+    private void showFeedback(int returnLayout) {
+        FirebaseUser user = auth == null ? null : auth.getCurrentUser();
+        if (user == null || db == null) return;
+        android.widget.EditText field = new android.widget.EditText(this);
+        field.setHint("What's on your mind?");
+        field.setMinLines(3);
+        field.setPadding(40, 30, 40, 10);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Remark & feedback")
+                .setView(field)
+                .setPositiveButton("Send", (d, w) -> {
+                    String message = field.getText().toString().trim();
+                    if (message.isEmpty()) return;
+                    Map<String, Object> feedback = new HashMap<>();
+                    feedback.put("uid", user.getUid());
+                    feedback.put("role", meRole);
+                    feedback.put("message", message);
+                    feedback.put("createdAt", System.currentTimeMillis());
+                    db.collection("feedback").document().set(feedback)
+                            .addOnSuccessListener(done -> toast("Thanks — feedback sent"))
+                            .addOnFailureListener(error -> toast("Could not send feedback"));
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private android.widget.LinearLayout dialogFieldBox() {
+        android.widget.LinearLayout box = new android.widget.LinearLayout(this);
+        box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        box.setPadding(48, 20, 48, 10);
+        return box;
+    }
+
+    private android.widget.EditText dialogField(android.widget.LinearLayout box, String hint, String initial) {
+        android.widget.EditText field = new android.widget.EditText(this);
+        field.setHint(hint);
+        if (initial != null) field.setText(initial);
+        box.addView(field);
+        return field;
+    }
+
+    private void loadCollectorProfile() {
+        FirebaseUser user = auth == null ? null : auth.getCurrentUser();
+        if (user == null || db == null) return;
+        db.collection("users").document(user.getUid()).get().addOnSuccessListener(snapshot -> {
+            TextView nameView = findViewById(R.id.tvCollectorName);
+            TextView idView = findViewById(R.id.tvCollectorId);
+            String name = capitalize(snapshot.getString("name"));
+            if (nameView != null) nameView.setText(name);
+            // The Firebase Auth UID is the only backend-issued unique identifier this app has
+            // for a collector \u2014 deriving a display ID from it (rather than inventing one on
+            // the client) keeps this traceable back to a real account.
+            if (idView != null) idView.setText("Collector ID: COL-" + user.getUid().substring(0, Math.min(6, user.getUid().length())).toUpperCase(Locale.US));
+        });
+    }
+
+    private void wireCollectionHistorySearch() {
+        android.widget.EditText search = findViewById(R.id.etSearchStreet);
+        if (search == null) return;
+        search.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
+            @Override public void afterTextChanged(android.text.Editable s) {
+                loadCollectionHistory(s.toString().trim());
+            }
+        });
+    }
+
+    private void loadCollectionHistory(String searchTerm) {
+        LinearLayout live = findViewById(R.id.liveHistoryList);
+        View staticSample = findViewById(R.id.staticHistorySample);
+        if (live == null || db == null) return;
+        FirebaseUser user = auth == null ? null : auth.getCurrentUser();
+        if (user == null) return;
+        db.collection("submissions").whereEqualTo("collectorId", user.getUid())
+                .whereEqualTo("status", "completed").limit(100).get()
+                .addOnSuccessListener(snapshot -> {
+                    if (staticSample != null) staticSample.setVisibility(View.GONE);
+                    List<DocumentSnapshot> docs = new java.util.ArrayList<>(snapshot.getDocuments());
+                    docs.sort((a, b) -> Long.compare(safeLong(b, "completedAt"), safeLong(a, "completedAt")));
+                    live.removeAllViews();
+                    int shown = 0;
+                    for (DocumentSnapshot doc : docs) {
+                        String address = doc.getString("address");
+                        String label = address == null ? "Location not captured" : address;
+                        if (searchTerm != null && !searchTerm.isEmpty()
+                                && !label.toLowerCase(Locale.US).contains(searchTerm.toLowerCase(Locale.US))) continue;
+                        live.addView(historyRow(label, formatDate(safeLong(doc, "completedAt"))));
+                        shown++;
+                    }
+                    if (shown == 0) {
+                        live.addView(infoRow(searchTerm != null && !searchTerm.isEmpty() ? "No matches for \u201c" + searchTerm + "\u201d" : "No collection history yet",
+                                "Completed pickups will appear here"));
+                    }
+                })
+                .addOnFailureListener(error -> {
+                    if (staticSample != null) staticSample.setVisibility(View.GONE);
+                    live.removeAllViews();
+                    live.addView(infoRow("Could not load history", "Check Firestore rules/connection"));
+                });
+    }
+
+    private LinearLayout historyRow(String location, String time) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setBackgroundResource(R.drawable.bg_white_card);
+        row.setPadding(18, 16, 18, 16);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.setMargins(0, 0, 0, 10);
+        row.setLayoutParams(params);
+
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        TextView locView = new TextView(this);
+        locView.setText(location);
+        locView.setTextColor(Color.rgb(17, 24, 39));
+        locView.setTextSize(14);
+        locView.setTypeface(null, android.graphics.Typeface.BOLD);
+        col.addView(locView);
+        TextView timeView = new TextView(this);
+        timeView.setText("Collected at " + time);
+        timeView.setTextColor(Color.rgb(107, 114, 128));
+        timeView.setTextSize(12);
+        col.addView(timeView);
+        row.addView(col, new LinearLayout.LayoutParams(0, -2, 1));
+
+        TextView statusView = new TextView(this);
+        statusView.setText("Completed");
+        statusView.setTextColor(Color.rgb(32, 185, 104));
+        statusView.setTextSize(12);
+        statusView.setTypeface(null, android.graphics.Typeface.BOLD);
+        row.addView(statusView);
+        return row;
+    }
+
+    private void setupLiveMap() {
+        FrameLayout container = findViewById(R.id.mapContainer);
+        TextView status = findViewById(R.id.tvMapStatus);
+        if (container == null) return;
+        String key = BuildConfig.MAPS_API_KEY;
+        if (key == null || key.isEmpty() || key.startsWith("YOUR_")) {
+            if (status != null) status.setText("Google Maps API key is not configured.\nAdd MAPS_API_KEY to local.properties and rebuild.");
+            return;
+        }
+        teardownMap();
+        mapView = new MapView(this);
+        container.addView(mapView, 0);
+        // The Activity is already started/resumed, so the MapView must be brought up manually.
+        mapView.onCreate(null);
+        mapView.onStart();
+        mapView.onResume();
+        mapView.getMapAsync(this);
+    }
+
+    private void teardownMap() {
+        if (liveCollectorsListener != null) {
+            liveCollectorsListener.remove();
+            liveCollectorsListener = null;
+        }
+        liveCollectorMarkers.clear();
+        if (mapView != null) {
+            mapView.onPause();
+            mapView.onStop();
+            mapView.onDestroy();
+            mapView = null;
+        }
+        googleMap = null;
     }
 
     @Override
     public void onMapReady(@NonNull GoogleMap map) {
         googleMap = map;
-        LatLng bengaluru = new LatLng(12.9716, 77.5946);
-        map.moveCamera(CameraUpdateFactory.newLatLngZoom(bengaluru, 13f));
-        map.addMarker(new MarkerOptions().position(bengaluru).title("Current collection area"));
-        map.addMarker(new MarkerOptions().position(new LatLng(12.975, 77.601)).title("Pickup request"));
+        TextView mapStatus = findViewById(R.id.tvMapStatus);
+        if (mapStatus != null) mapStatus.setVisibility(View.GONE);
         map.getUiSettings().setZoomControlsEnabled(false);
+        enableMyLocation();
+        centerMapOnRealLocation();
+        loadRealMapMarkers();
+        listenForLiveCollectors();
+        map.setOnMarkerClickListener(marker -> {
+            selectedTarget = marker.getPosition();
+            return false;
+        });
+    }
+
+    private void centerMapOnRealLocation() {
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                || fusedLocationClient == null) {
+            return; // no fake fallback coordinate \u2014 map just stays at its default view until we have a real fix
+        }
+        fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
+            if (location != null && googleMap != null) {
+                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
+                        new LatLng(location.getLatitude(), location.getLongitude()), 14f));
+            }
+        });
+    }
+
+    // Shows real pending submissions (unclaimed waste reports anywhere) and this collector's
+    // own assigned/completed ones \u2014 only for submissions that actually have captured
+    // coordinates. Nothing here is invented; submissions without real lat/lng are skipped.
+    private void loadRealMapMarkers() {
+        if (googleMap == null || db == null) return;
+        FirebaseUser user = auth == null ? null : auth.getCurrentUser();
+        String myUid = user == null ? null : user.getUid();
+        db.collection("submissions")
+                .whereIn("status", java.util.Arrays.asList("pending", "assigned"))
+                .limit(50).get()
+                .addOnSuccessListener(snapshot -> {
+                    for (QueryDocumentSnapshot doc : snapshot) {
+                        Double lat = doc.getDouble("latitude");
+                        Double lng = doc.getDouble("longitude");
+                        if (lat == null || lng == null) continue; // no fake coordinates
+                        String collectorId = doc.getString("collectorId");
+                        boolean mine = myUid != null && myUid.equals(collectorId);
+                        String state = doc.getString("status");
+                        if ("assigned".equals(state) && !mine) continue;
+                        String type = doc.getString("wasteType");
+                        MarkerOptions marker = new MarkerOptions()
+                                .position(new LatLng(lat, lng))
+                                .title((type == null ? "Waste report" : type) + " \u2014 " + state)
+                                .icon(BitmapDescriptorFactory.defaultMarker(mine
+                                        ? BitmapDescriptorFactory.HUE_GREEN : BitmapDescriptorFactory.HUE_ORANGE));
+                        googleMap.addMarker(marker);
+                    }
+                });
     }
 
     private void enableMyLocation() {
@@ -1052,7 +2141,12 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     @Override protected void onResume() { super.onResume(); if (mapView != null) mapView.onResume(); }
     @Override protected void onPause() { if (mapView != null) mapView.onPause(); super.onPause(); }
     @Override protected void onStop() { if (mapView != null) mapView.onStop(); super.onStop(); }
-    @Override protected void onDestroy() { if (mapView != null) mapView.onDestroy(); super.onDestroy(); }
+    @Override protected void onDestroy() {
+        stopLocationBroadcast();
+        if (liveCollectorsListener != null) liveCollectorsListener.remove();
+        if (mapView != null) mapView.onDestroy();
+        super.onDestroy();
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -1064,7 +2158,16 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             if (granted && shouldOpen) takePhoto();
             else if (!granted) toast("Camera permission is required to take a waste photo.");
         } else if (requestCode == LOCATION_PERMISSION_REQUEST) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) enableMyLocation();
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (currentLayout == R.layout.resident_submit_waste) {
+                if (granted) captureLocationForSubmission();
+                else {
+                    TextView statusView = findViewById(R.id.tvLocationStatus);
+                    if (statusView != null) statusView.setText("Location permission denied \u2014 submission will save without a location");
+                }
+            } else if (granted) {
+                enableMyLocation();
+            }
         }
     }
 

@@ -103,6 +103,23 @@ service cloud.firestore {
       allow write: if isAdmin() || isOwner(residentId);
     }
 
+    // Real-time collector positions, kept separate from /users so any signed-in collector
+    // can see who else is online without exposing full user profiles.
+    match /collectorLocations/{collectorId} {
+      allow read: if signedIn();
+      allow write: if isAdmin() || isOwner(collectorId);
+    }
+
+    match /collectorRoutes/{collectorId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /feedback/{feedbackId} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow read, update, delete: if isAdmin();
+    }
+
     match /redemptions/{redemptionId} {
       allow create: if signedIn()
         && request.resource.data.residentId == request.auth.uid;

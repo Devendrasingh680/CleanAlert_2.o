@@ -1,0 +1,11 @@
+{
+  "name": "cleanalert-functions",
+  "description": "Server-side notification triggers for CleanAlert",
+  "engines": { "node": "20" },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.3.0"
+  },
+  "private": true
+}

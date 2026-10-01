@@ -94,10 +94,11 @@
             android:textSize="18sp"
             android:textStyle="bold" />
 
-        <TextView android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="12dp" android:background="@drawable/bg_white_card" android:gravity="center_vertical" android:paddingStart="18dp" android:text="Users and collectors" android:textColor="#111827" android:textSize="15sp" />
-        <TextView android:id="@+id/btnAdminSubmissions" android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="10dp" android:background="@drawable/bg_white_card" android:gravity="center_vertical" android:paddingStart="18dp" android:text="Submissions and routes" android:textColor="#111827" android:textSize="15sp" />
-        <TextView android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="10dp" android:background="@drawable/bg_white_card" android:gravity="center_vertical" android:paddingStart="18dp" android:text="Rewards catalogue" android:textColor="#111827" android:textSize="15sp" />
-        <TextView android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="10dp" android:background="@drawable/bg_white_card" android:gravity="center_vertical" android:paddingStart="18dp" android:text="Reports and analytics" android:textColor="#111827" android:textSize="15sp" />
+        <TextView android:id="@+id/btnAdminUsers" android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="12dp" android:background="@drawable/bg_white_card" android:gravity="center_vertical" android:paddingStart="18dp" android:text="Users and collectors" android:textColor="#111827" android:textSize="15sp" />
+        <TextView android:id="@+id/btnAdminAssignRoutes" android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="10dp" android:background="@drawable/bg_white_card" android:gravity="center_vertical" android:paddingStart="18dp" android:text="Assign Collectors Route" android:textColor="#111827" android:textSize="15sp" />
+        <TextView android:id="@+id/btnAdminSubmissions" android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="10dp" android:background="@drawable/bg_white_card" android:gravity="center_vertical" android:paddingStart="18dp" android:text="Submissions review" android:textColor="#111827" android:textSize="15sp" />
+        <TextView android:id="@+id/btnAdminRewards" android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="10dp" android:background="@drawable/bg_white_card" android:gravity="center_vertical" android:paddingStart="18dp" android:text="Rewards catalogue" android:textColor="#111827" android:textSize="15sp" />
+        <TextView android:id="@+id/btnAdminReports" android:layout_width="match_parent" android:layout_height="54dp" android:layout_marginTop="10dp" android:background="@drawable/bg_white_card" android:gravity="center_vertical" android:paddingStart="18dp" android:text="Reports and analytics" android:textColor="#111827" android:textSize="15sp" />
 
     </LinearLayout>
 </ScrollView>
